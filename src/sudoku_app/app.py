@@ -1,8 +1,4 @@
-"""Sudoku UI mockup built with tkinter.
-
-Run:
-    python sudoku_mockup.py
-"""
+"""Sudoku UI mockup built with tkinter."""
 
 from __future__ import annotations
 
@@ -12,7 +8,8 @@ from tkinter import ttk
 
 class SudokuMockupApp:
     GRID_SIZE = 9
-    CELL_SIZE = 58
+    MIN_CELL_SIZE = 42
+    MAX_CELL_SIZE = 88
     BOARD_PADDING = 14
 
     BG_COLOR = "#F6F7FB"
@@ -35,6 +32,9 @@ class SudokuMockupApp:
         self.time_var = tk.StringVar(value="00:00")
         self.mistake_var = tk.StringVar(value="0")
         self.filled_var = tk.StringVar(value="0 / 81")
+
+        self.canvas: tk.Canvas
+        self.cell_size = 58
 
         self._build_style()
         self._build_layout()
@@ -66,17 +66,15 @@ class SudokuMockupApp:
         board_frame.rowconfigure(0, weight=1)
         board_frame.columnconfigure(0, weight=1)
 
-        size = self.GRID_SIZE * self.CELL_SIZE + self.BOARD_PADDING * 2
         self.canvas = tk.Canvas(
             board_frame,
-            width=size,
-            height=size,
             bg=self.BOARD_BG,
             highlightthickness=0,
             relief="flat",
         )
-        self.canvas.grid(row=0, column=0)
+        self.canvas.grid(row=0, column=0, sticky="nsew")
         self.canvas.bind("<Button-1>", self._on_canvas_click)
+        self.canvas.bind("<Configure>", self._on_canvas_resize)
 
         self._build_info_panel(content)
         self._build_statusbar(wrapper)
@@ -131,8 +129,20 @@ class SudokuMockupApp:
         status.pack(fill="x", pady=(6, 0))
         ttk.Label(status, textvariable=self.status_var).pack(side="left")
 
+    def _on_canvas_resize(self, event: tk.Event) -> None:
+        board_side = min(event.width, event.height)
+        usable = max(1, board_side - self.BOARD_PADDING * 2)
+        new_size = max(self.MIN_CELL_SIZE, min(self.MAX_CELL_SIZE, usable // self.GRID_SIZE))
+        if new_size != self.cell_size:
+            self.cell_size = new_size
+            self._draw_board()
+
     def _draw_board(self) -> None:
         self.canvas.delete("all")
+
+        board_len = self.GRID_SIZE * self.cell_size
+        canvas_size = board_len + self.BOARD_PADDING * 2
+        self.canvas.configure(scrollregion=(0, 0, canvas_size, canvas_size))
 
         if self.selected:
             row, col = self.selected
@@ -140,22 +150,22 @@ class SudokuMockupApp:
             self.canvas.create_rectangle(x1, y1, x2, y2, fill=self.SELECT_COLOR, outline="")
 
         for i in range(self.GRID_SIZE + 1):
-            x = self.BOARD_PADDING + i * self.CELL_SIZE
-            y = self.BOARD_PADDING + i * self.CELL_SIZE
+            x = self.BOARD_PADDING + i * self.cell_size
+            y = self.BOARD_PADDING + i * self.cell_size
             width = 3 if i % 3 == 0 else 1
 
             self.canvas.create_line(
                 x,
                 self.BOARD_PADDING,
                 x,
-                self.BOARD_PADDING + self.GRID_SIZE * self.CELL_SIZE,
+                self.BOARD_PADDING + board_len,
                 fill=self.BLOCK_LINE_COLOR if i % 3 == 0 else self.CELL_LINE_COLOR,
                 width=width,
             )
             self.canvas.create_line(
                 self.BOARD_PADDING,
                 y,
-                self.BOARD_PADDING + self.GRID_SIZE * self.CELL_SIZE,
+                self.BOARD_PADDING + board_len,
                 y,
                 fill=self.BLOCK_LINE_COLOR if i % 3 == 0 else self.CELL_LINE_COLOR,
                 width=width,
@@ -174,17 +184,18 @@ class SudokuMockupApp:
         }
         mock_user_numbers = {(3, 3): 8, (4, 1): 2, (7, 5): 4}
 
+        value_font_size = max(14, int(self.cell_size * 0.34))
         for (row, col), value in fixed_numbers.items():
             cx, cy = self._cell_center(row, col)
-            self.canvas.create_text(cx, cy, text=str(value), font=("Segoe UI", 20, "bold"), fill=self.FIXED_TEXT_COLOR)
+            self.canvas.create_text(cx, cy, text=str(value), font=("Segoe UI", value_font_size, "bold"), fill=self.FIXED_TEXT_COLOR)
 
         for (row, col), value in mock_user_numbers.items():
             cx, cy = self._cell_center(row, col)
-            self.canvas.create_text(cx, cy, text=str(value), font=("Segoe UI", 20), fill=self.USER_TEXT_COLOR)
+            self.canvas.create_text(cx, cy, text=str(value), font=("Segoe UI", value_font_size), fill=self.USER_TEXT_COLOR)
 
     def _on_canvas_click(self, event: tk.Event) -> None:
-        col = (event.x - self.BOARD_PADDING) // self.CELL_SIZE
-        row = (event.y - self.BOARD_PADDING) // self.CELL_SIZE
+        col = (event.x - self.BOARD_PADDING) // self.cell_size
+        row = (event.y - self.BOARD_PADDING) // self.cell_size
 
         if 0 <= row < self.GRID_SIZE and 0 <= col < self.GRID_SIZE:
             self.selected = (int(row), int(col))
@@ -192,10 +203,10 @@ class SudokuMockupApp:
             self._draw_board()
 
     def _cell_rect(self, row: int, col: int) -> tuple[int, int, int, int]:
-        x1 = self.BOARD_PADDING + col * self.CELL_SIZE
-        y1 = self.BOARD_PADDING + row * self.CELL_SIZE
-        x2 = x1 + self.CELL_SIZE
-        y2 = y1 + self.CELL_SIZE
+        x1 = self.BOARD_PADDING + col * self.cell_size
+        y1 = self.BOARD_PADDING + row * self.cell_size
+        x2 = x1 + self.cell_size
+        y2 = y1 + self.cell_size
         return x1, y1, x2, y2
 
     def _cell_center(self, row: int, col: int) -> tuple[int, int]:
