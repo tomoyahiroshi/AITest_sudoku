@@ -4,7 +4,7 @@ Run:
     python test/sudoku_mockup.py
 """
 
-from src.sudoku_app.app import main
+from sudoku_app.app import main
 
 
 if __name__ == "__main__":
