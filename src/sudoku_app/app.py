@@ -31,6 +31,7 @@ class GameState:
 
 
 PUZZLES: dict[str, list[dict[str, Grid]]] = {
+    # 難易度ごとに問題と解答のペアを保持する。
     "easy": [
         {
             "puzzle": [
@@ -154,6 +155,7 @@ class SudokuApp:
         self._tick_timer()
 
     def _new_state(self, difficulty: str) -> GameState:
+        # 初期盤面から独立した作業用グリッドを生成する。
         selected = random.choice(PUZZLES[difficulty])
         puzzle = [row[:] for row in selected["puzzle"]]
         solution = [row[:] for row in selected["solution"]]
@@ -261,6 +263,7 @@ class SudokuApp:
         self.difficulty_combo.bind("<<ComboboxSelected>>", lambda _e: self.new_game())
 
     def _tick_timer(self) -> None:
+        # 1秒ごとに経過時間を更新し、次のタイマーを予約する。
         if self.state:
             self.state.elapsed_seconds = int(time.time() - self.state.started_at)
             self.time_var.set(self._format_time(self.state.elapsed_seconds))
@@ -360,6 +363,7 @@ class SudokuApp:
         self._refresh_all()
 
     def _collect_conflicts(self) -> set[tuple[int, int]]:
+        # 行・列・3x3ブロック内の重複セルを収集する。
         conflicts: set[tuple[int, int]] = set()
         grid = self.state.user_grid
         for row in range(9):
@@ -392,6 +396,7 @@ class SudokuApp:
         self._set_status("ゲームクリア")
 
     def _draw_board(self) -> None:
+        # 選択セル・衝突セル・同値セルの状態に応じてセル背景色を塗り分ける。
         self.canvas.delete("all")
         board_len = self.GRID_SIZE * self.cell_size
 
@@ -498,6 +503,7 @@ class SudokuApp:
         if not path:
             return
         payload = {
+            # set型はJSONに直接保存できないため配列へ変換する。
             "puzzle": self.state.puzzle,
             "solution": self.state.solution,
             "user_grid": self.state.user_grid,
@@ -540,6 +546,7 @@ class SudokuApp:
         self._refresh_all()
 
     def _validate_payload(self, payload: dict) -> None:
+        # 外部ファイル由来のデータを最小限検証して破損データを弾く。
         required = {"puzzle", "solution", "user_grid", "notes", "mistakes", "elapsed_seconds", "difficulty"}
         missing = required - payload.keys()
         if missing:
