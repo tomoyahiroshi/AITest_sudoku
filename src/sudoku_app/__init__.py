@@ -1,0 +1,1 @@
+"""Sudoku application package."""
